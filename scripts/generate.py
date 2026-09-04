@@ -36,6 +36,19 @@ BUCKETS = (
 )
 
 
+def run(cmd: list[str], what: str) -> str:
+    """A `gh` call whose failure says what GitHub actually objected to.
+
+    subprocess's own CalledProcessError prints the command and the exit code
+    and drops stderr on the floor, which turns "your token is missing a scope"
+    into "exit status 1" — a message that costs an hour to act on.
+    """
+    done = subprocess.run(cmd, capture_output=True, text=True)
+    if done.returncode != 0:
+        sys.exit(f"{what} failed:\n{(done.stderr or done.stdout).strip()}")
+    return done.stdout
+
+
 def gh(path: str, paginate: bool = False) -> object:
     """One `gh api` call. gh is already on the runner and already authed."""
     cmd = ["gh", "api", path]
@@ -44,8 +57,7 @@ def gh(path: str, paginate: bool = False) -> object:
         # them into invalid JSON, which is what plain --paginate emits.
         cmd.append("--paginate")
         cmd.append("--slurp")
-    out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-    parsed = json.loads(out)
+    parsed = json.loads(run(cmd, f"GET {path}"))
     if paginate:
         return [item for page in parsed for item in page]
     return parsed
@@ -132,10 +144,10 @@ def calendar() -> list[list[int]]:
       }
     }
     """
-    out = subprocess.run(
+    out = run(
         ["gh", "api", "graphql", "-f", f"query={query}", "-F", f"login={USER}"],
-        capture_output=True, text=True, check=True,
-    ).stdout
+        "contribution calendar query",
+    )
     weeks = json.loads(out)["data"]["user"]["contributionsCollection"][
         "contributionCalendar"
     ]["weeks"]

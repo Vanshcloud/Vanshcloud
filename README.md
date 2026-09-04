@@ -56,13 +56,11 @@ Counted from every commit on this account, in IST. Regenerated daily — see
 **I'm a Night 🦉**
 
 ```text
-1  🌞 Morning       0 commits   ░░░░░░░░░░░░░░░░░░░░░░░░░     0.0%
-2  🌆 Daytime      59 commits   ███████████░░░░░░░░░░░░░░    45.0%
-3  🌃 Evening      45 commits   █████████░░░░░░░░░░░░░░░░    34.4%
-4  🌙 Night        27 commits   █████░░░░░░░░░░░░░░░░░░░░    20.6%
+1  🌞 Morning       1 commits   ░░░░░░░░░░░░░░░░░░░░░░░░░     0.6%
+2  🌆 Daytime      71 commits   ███████████░░░░░░░░░░░░░░    42.3%
+3  🌃 Evening      62 commits   █████████░░░░░░░░░░░░░░░░    36.9%
+4  🌙 Night        34 commits   █████░░░░░░░░░░░░░░░░░░░░    20.2%
 ```
-
-<sub>Counted across public repositories only — set a `GH_PAT` secret to include private commits.</sub>
 <!--END_SECTION:commit-times-->
 
 <br>
