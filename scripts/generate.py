@@ -289,10 +289,10 @@ def pop_svg(weeks: list[list[int]]) -> str:
         + "}"
     )
     rules.append(
-        # left center is the breech, where the barrel meets the wheel. The
-        # default centre is the middle of the barrel itself, so it pivoted
-        # about its own waist and the muzzle swept back through the mount.
-        ".turret{transform-box:fill-box;transform-origin:left center;"
+        # The origin itself is set per-element, computed from the hull's own
+        # dimensions; a keyword like `left center` would follow the bounding
+        # box and shift the moment the barrel's length changed.
+        ".turret{transform-box:fill-box;"
         f"animation:aim {cycle:.2f}s linear infinite}}"
     )
 
@@ -334,17 +334,25 @@ def pop_svg(weeks: list[list[int]]) -> str:
             f'y="{gap + y * pitch}" width="{cell}" height="{cell}"{style}/>'
         )
 
-    # The gun: a barrel that swings, on a fixed mount. The rotating group has
-    # no transform attribute of its own — a CSS animation on transform beats
-    # the SVG attribute, so anything static there would simply be discarded.
+    # A turret seen from above: hull and barrel are one body that swings
+    # together. Rotating the barrel alone left a stick spinning on a fixed
+    # blob, which is what made the motion read as wrong even once the pivot
+    # was right.
+    hull_w, hull_h = 14.0, 10.0
+    breech = 5.0
+    # transform-box:fill-box measures transform-origin from the group's
+    # bounding box, so the pivot is computed from the shapes rather than
+    # named: change a dimension and the origin follows instead of drifting.
+    box_left, box_top = -hull_w / 2, -hull_h / 2
+    origin_x, origin_y = -box_left, -box_top
     gun = (
         f'<g transform="translate({gun_x:.1f},{gun_y:.1f})">'
-        f'<g class="turret">'
-        f'<rect class="gun" x="0" y="-3" width="{barrel}" height="6" rx="2"/>'
-        f"</g>"
-        f'<circle class="gun" cx="0" cy="0" r="6.5"/>'
-        f'<rect class="gun" x="-7" y="5" width="14" height="3.2" rx="1.6"/>'
-        f"</g>"
+        f'<g class="turret" style="transform-origin:{origin_x:.1f}px {origin_y:.1f}px">'
+        f'<rect class="gun" x="{box_left:.1f}" y="{box_top:.1f}" '
+        f'width="{hull_w:.1f}" height="{hull_h:.1f}" rx="4.5"/>'
+        f'<rect class="gun" x="{breech:.1f}" y="-2.6" width="{barrel:.1f}" '
+        f'height="5.2" rx="2.6"/>'
+        f"</g></g>"
     )
 
     return (

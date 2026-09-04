@@ -82,7 +82,14 @@ for flight_css in re.findall(r"@keyframes f\d+\{.*?\}(?=@|$)", svg, re.S):
 # The barrel pivots at the breech, not at its own waist. transform-origin
 # defaults to the centre of the box, which for a barrel drawn from the mount
 # outwards is halfway along it — the muzzle then sweeps back through the wheel.
-assert "transform-origin:left center" in svg, "the barrel must pivot at the breech"
+# The pivot has to sit where the mount is, and it is computed from the hull's
+# own dimensions rather than named with a keyword: a keyword follows the
+# bounding box, so it would shift the moment the barrel length changed.
+origin = re.search(r'class="turret" style="transform-origin:([\d.]+)px ([\d.]+)px"', svg)
+assert origin, "the turret needs an explicit computed pivot"
+hull = re.search(r'<rect class="gun" x="(-[\d.]+)" y="(-[\d.]+)"', svg)
+assert abs(float(origin.group(1)) + float(hull.group(1))) < 1e-6
+assert abs(float(origin.group(2)) + float(hull.group(2))) < 1e-6, "pivot is off the mount"
 
 # Consecutive bearings must never be more than half a turn apart. atan2 returns
 # (-180, 180], so a target just below the axis followed by one just above reads
@@ -102,7 +109,7 @@ assert all(bearings[i] == bearings[i + 1] for i in range(0, len(bearings) - 1, 2
 # The turret has to be free to rotate: a CSS animation on transform overrides
 # the SVG transform attribute on the same element, so the mount's position must
 # live on a separate group or the aim animation simply discards it.
-assert re.search(r'<g transform="translate\([\d.]+,[\d.]+\)"><g class="turret">', svg), \
+assert re.search(r'<g transform="translate\([\d.]+,[\d.]+\)"><g class="turret"', svg), \
     "the turret needs its own group inside a positioned mount"
 
 print("selftest ok")
