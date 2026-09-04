@@ -19,6 +19,13 @@ morning_heavy = Counter({9: 3, 2: 1})
 assert "GH_PAT" not in commit_table(morning_heavy, True)
 assert "GH_PAT" in commit_table(morning_heavy, False)
 
+# Rendered as a <pre> in a table, never a fence: a fence spans the full page
+# width and carries a copy button, and neither belongs on a profile.
+table = commit_table(morning_heavy, True)
+assert "```" not in table, "a fence would take the whole page width"
+assert table.startswith("<table>") and "<pre>" in table
+assert "\n\n" not in table, "a blank line drops GitHub back into markdown mid-block"
+
 # The headline follows the commits rather than being decoration.
 assert "early" in commit_table(morning_heavy, True)
 assert "Night" in commit_table(Counter({23: 5}), True)

@@ -127,10 +127,18 @@ def commit_table(hours: Counter, private: bool) -> str:
     # A run without a PAT counts a strict subset of the commits. Saying which
     # subset beats publishing the smaller number as though it were the whole.
     note = "" if private else (
-        "\n\n<sub>Counted across public repositories only — set a `GH_PAT` "
-        "secret to include private commits.</sub>"
+        "<br><sub>Counted across public repositories only — set a "
+        "<code>GH_PAT</code> secret to include private commits.</sub>"
     )
-    return f"**{title}**\n\n```text\n" + "\n".join(lines) + "\n```" + note
+    # A ``` fence would render the full width of the page and carry GitHub's
+    # copy button. A <pre> in a one-cell table shrinks to its content and gets
+    # neither, while still holding the column alignment the bars depend on.
+    # No blank lines inside the HTML block, or GitHub drops back into markdown
+    # mode partway through and renders the tags as text.
+    body = "\n".join(lines)
+    return (
+        f"<table><tr><td><b>{title}</b><pre>\n{body}\n</pre>{note}</td></tr></table>"
+    )
 
 
 def calendar() -> list[list[int]]:
