@@ -133,11 +133,17 @@ def commit_table(hours: Counter, private: bool) -> str:
     # A ``` fence would render the full width of the page and carry GitHub's
     # copy button. A <pre> in a one-cell table shrinks to its content and gets
     # neither, while still holding the column alignment the bars depend on.
+    # align="center" on the table rather than a wrapping <div align="center">:
+    # GitHub styles markdown tables display:block;width:max-content, which
+    # text-align does not centre, and inline styles are stripped. Centring the
+    # <pre> instead would centre each line and destroy the column alignment.
     # No blank lines inside the HTML block, or GitHub drops back into markdown
     # mode partway through and renders the tags as text.
     body = "\n".join(lines)
     return (
-        f"<table><tr><td><b>{title}</b><pre>\n{body}\n</pre>{note}</td></tr></table>"
+        '<table align="center"><tr><td>'
+        f"<b>{title}</b><pre>\n{body}\n</pre>{note}"
+        "</td></tr></table>"
     )
 
 

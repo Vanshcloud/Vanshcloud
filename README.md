@@ -48,11 +48,11 @@
 <br>
 
 <!--START_SECTION:commit-times-->
-<table><tr><td><b>I'm a Night 🦉</b><pre>
+<table align="center"><tr><td><b>I'm a Night 🦉</b><pre>
 1  🌞 Morning       1 commits   ░░░░░░░░░░░░░░░░░░░░░░░░░     0.5%
-2  🌆 Daytime      85 commits   ████████████░░░░░░░░░░░░░    46.4%
-3  🌃 Evening      63 commits   █████████░░░░░░░░░░░░░░░░    34.4%
-4  🌙 Night        34 commits   █████░░░░░░░░░░░░░░░░░░░░    18.6%
+2  🌆 Daytime      85 commits   ████████████░░░░░░░░░░░░░    46.2%
+3  🌃 Evening      64 commits   █████████░░░░░░░░░░░░░░░░    34.8%
+4  🌙 Night        34 commits   █████░░░░░░░░░░░░░░░░░░░░    18.5%
 </pre></td></tr></table>
 <!--END_SECTION:commit-times-->
 

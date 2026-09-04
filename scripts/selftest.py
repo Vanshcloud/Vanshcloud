@@ -23,7 +23,7 @@ assert "GH_PAT" in commit_table(morning_heavy, False)
 # width and carries a copy button, and neither belongs on a profile.
 table = commit_table(morning_heavy, True)
 assert "```" not in table, "a fence would take the whole page width"
-assert table.startswith("<table>") and "<pre>" in table
+assert table.startswith('<table align="center">') and "<pre>" in table
 assert "\n\n" not in table, "a blank line drops GitHub back into markdown mid-block"
 
 # The headline follows the commits rather than being decoration.
