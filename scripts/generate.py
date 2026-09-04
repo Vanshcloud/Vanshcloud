@@ -155,21 +155,47 @@ def calendar() -> list[list[int]]:
     return [[day["contributionCount"] for day in week["contributionDays"]] for week in weeks]
 
 
+# The farmer, drawn once at the origin with his feet on y=0, so the only thing
+# the animations move is the group around him. Kept at module scope because a
+# 30px stick figure either reads as a person or does not, and that is far
+# easier to judge on its own than inside 370 popping squares.
+WALKER = (
+    # Head, then a torso pitched forward — upright he reads as strolling.
+    '<circle class="skin" cx="1.5" cy="-27" r="4.4"/>'
+    '<path class="ink" d="M1,-22.5 C0,-18 -1,-14 -2,-10.5"/>'
+    # Both arms reach down and forward to the handles.
+    '<path class="ink" d="M0,-19 L9.5,-13.5"/>'
+    '<path class="ink" d="M-0.5,-16 L9.5,-11"/>'
+    # Legs swing from the hip; the back one is half a stride behind.
+    '<path class="leg" d="M-2,-10.5 L-6,0"/>'
+    '<path class="leg back" d="M-2,-10.5 L2.5,0"/>'
+    # The plough: two handles running back to a beam, and a blade in the soil.
+    '<path class="ink" d="M9.5,-13.5 L20,2"/>'
+    '<path class="ink" d="M9.5,-11 L21,-0.5"/>'
+    '<path class="ink" d="M13.5,-7.5 L15,-9.5"/>'
+    '<path class="skin" d="M18.5,0 l6,1.5 -5.5,3.5 z"/>'
+)
+
+
 def pop_svg(weeks: list[list[int]]) -> str:
-    """The contribution grid as bubble wrap: every square pops in turn.
+    """The contribution year as a field, with someone ploughing across it.
 
-    Every square, not only the green ones — an empty square that stays rigid
-    while the wave crosses it breaks the illusion that the whole sheet is
-    being popped. Contribution days pop harder, and overshoot on the way back,
-    so the wave still reads as tracking the year's activity.
+    A figure walks the width of the grid; each square pops as he reaches its
+    column, so the pops have a cause rather than firing at random. Contribution
+    days burst — bigger scale, a brightness flash, a squash on the way back —
+    while empty ground just gets turned over.
 
-    CSS animation rather than SMIL or script, because GitHub serves this
-    through an <img> — scripts never run there, stylesheets inside the SVG do.
+    Everything is CSS keyframes and per-square animation-delay: GitHub serves
+    this through an <img>, where scripts never run but stylesheets inside the
+    SVG do. The delay for a square is whatever makes its pop land at the moment
+    the walker's own animation has him standing over that column.
     """
     cell, gap = 11, 3
     pitch = cell + gap
-    width = len(weeks) * pitch + gap
-    height = 7 * pitch + gap
+    columns = len(weeks)
+    lane = 36  # headroom above the grid: the figure is 31.4 tall, plus the bob
+    width = columns * pitch + gap
+    height = 7 * pitch + gap + lane
 
     # Light and dark are both painted here: an <img> gets no page CSS, so the
     # only way to answer the reader's theme is prefers-color-scheme inside.
@@ -186,68 +212,107 @@ def pop_svg(weeks: list[list[int]]) -> str:
             return 0
         return min(4, 1 + int(count / peak * 3.999))
 
-    # Ordering the delay by position marched a hard vertical line across the
-    # grid — legible, but it reads as a scanner rather than as popping. Each
-    # square instead takes its turn at a scattered moment, which is what bubble
-    # wrap actually looks like going off.
-    #
-    # md5 of the coordinates rather than random.shuffle or hash(): the delays
-    # have to be identical on every rebuild, or the daily workflow rewrites
-    # pop.svg and commits a diff even on a day nothing happened. Python's own
-    # hash() is salted per process and would do exactly that.
-    sweep = 5.0
-    cycle = sweep + 2.0
+    # One crossing per cycle, at a walking pace rather than a sweep. He starts
+    # and ends off-canvas so he enters and leaves rather than materialising.
+    cycle = 12.0
+    margin = 26
+    span = width + 2 * margin
+    # Align the PEAK of the pop, at 96.8%, rather than its first frame at 95%.
+    # Aligning the start left every square swelling a beat after he had gone
+    # by: the pop lasts 5% of the cycle, which is two and a half columns of
+    # walking, so the disturbance visibly trailed him.
+    pop_at = 0.968
+    # And it is the blade that turns the soil, not the walker's feet — it is
+    # drawn out to his right, so the column under it is ahead of his centre.
+    blade = 19
 
-    def turn(x: int, y: int) -> float:
-        digest = hashlib.md5(f"{x},{y}".encode()).digest()
-        return int.from_bytes(digest[:4], "big") / 0xFFFFFFFF * sweep
+    def arrival(x: int) -> float:
+        """When the plough blade is over column x.
+
+        This inverts the *walk* keyframes, not the grid: he covers
+        width + 2*margin, so pacing him by column alone left him running two
+        columns ahead of the squares he was supposed to be popping.
+        """
+        centre = gap + x * pitch + cell / 2
+        return (centre - blade + margin) / span * cycle
+
+    def delay(x: int) -> float:
+        return (arrival(x) - pop_at * cycle) % cycle
 
     rules = [
         ".c{stroke-width:0;rx:2;transform-box:fill-box;transform-origin:center}",
-        # The bounce sits at the END of each square's cycle, not the start: a
-        # square is at rest for 95% of it, and the animation-delay decides when
-        # its turn comes round.
-        "@keyframes pop{"
+        # Ground that is merely walked over gets turned, not popped.
+        "@keyframes till{"
         "0%,95%{transform:scale(1)}"
-        "97.2%{transform:scale(1.28)}"
+        "97.2%{transform:scale(.82) rotate(8deg)}"
         "100%{transform:scale(1)}"
         "}",
-        # A contribution day goes bigger, flashes, and squashes under itself
-        # before settling — the overshoot is what makes it read as a pop
-        # rather than a pulse.
+        # A contribution day bursts: the overshoot and the squash under itself
+        # are what make it read as a pop rather than a pulse.
         "@keyframes popg{"
         "0%,95%{transform:scale(1);filter:none}"
         "96.8%{transform:scale(1.95);filter:brightness(1.6)}"
         "98.4%{transform:scale(.82);filter:none}"
         "100%{transform:scale(1)}"
         "}",
+        f"@keyframes walk{{"
+        f"0%{{transform:translateX({-margin}px)}}"
+        f"100%{{transform:translateX({width + margin}px)}}"
+        f"}}",
+        # A separate bob on an inner group, on its own short loop, so the gait
+        # does not have to divide into the crossing time.
+        "@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}",
+        "@keyframes stride{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}",
+        ".walker{animation:walk %.1fs linear infinite}" % cycle,
+        ".bob{animation:bob .5s ease-in-out infinite}",
+        # The legs carry their own stroke rather than borrowing .ink: they swing
+        # from the hip, so they need transform-origin of their own anyway.
+        ".ink,.leg{stroke:#57606a;fill:none;stroke-width:2.2;"
+        "stroke-linecap:round;stroke-linejoin:round}",
+        ".leg{transform-box:fill-box;transform-origin:top center;"
+        "animation:stride .5s ease-in-out infinite}",
+        ".leg.back{animation-delay:-.25s}",
+        ".skin{fill:#57606a}",
         # A reader who asked their system not to animate gets the finished
-        # grid instead of a still frame of a half-popped one.
-        "@media (prefers-reduced-motion:reduce){.c{animation:none!important}}",
+        # field and a walker standing still in it, not a half-popped frame.
+        "@media (prefers-reduced-motion:reduce){"
+        ".c,.walker,.bob,.leg{animation:none!important}}",
     ]
     for shade, light in enumerate(levels_light):
         rules.append(f".l{shade}{{fill:{light}}}")
     rules.append("@media (prefers-color-scheme:dark){")
     for shade, dark in enumerate(levels_dark):
         rules.append(f".l{shade}{{fill:{dark}}}")
+    rules.append(".ink,.leg{stroke:#adbac7}.skin{fill:#adbac7}")
     rules.append("}")
 
     parts = []
     for x, y, count in squares:
-        name = "popg" if count else "pop"
+        name = "popg" if count else "till"
         parts.append(
-            f'<rect class="c l{level(count)}" x="{gap + x * pitch}" y="{gap + y * pitch}" '
-            f'width="{cell}" height="{cell}" '
-            f'style="animation:{name} {cycle:.3f}s {turn(x, y):.3f}s infinite"/>'
+            f'<rect class="c l{level(count)}" x="{gap + x * pitch}" '
+            f'y="{lane + gap + y * pitch}" width="{cell}" height="{cell}" '
+            f'style="animation:{name} {cycle:.1f}s {delay(x):.3f}s infinite"/>'
         )
+
+    # Three nested groups, and the middle one has to exist: a CSS animation on
+    # transform overrides the SVG transform attribute on the same element, so
+    # putting the vertical placement on .bob had the bob animation discard it
+    # and draw him above the canvas, clipped out of the picture entirely.
+    walker = (
+        '<g class="walker">'
+        f'<g transform="translate(0,{lane})">'
+        f'<g class="bob">{WALKER}</g>'
+        "</g></g>"
+    )
 
     green = sum(1 for _, _, count in squares if count)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}" role="img" '
-        f'aria-label="A year of contributions, {green} of them days with commits, '
-        f'popping one square at a time">'
-        f"<style>{''.join(rules)}</style>{''.join(parts)}</svg>\n"
+        f'aria-label="A year of contributions as a field, {green} of them days '
+        f'with commits, popping as someone ploughs across it">'
+        f"<style>{''.join(rules)}</style>{''.join(parts)}{walker}</svg>\n"
     )
 
 
