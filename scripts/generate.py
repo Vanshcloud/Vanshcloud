@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import subprocess
@@ -155,56 +156,24 @@ def calendar() -> list[list[int]]:
     return [[day["contributionCount"] for day in week["contributionDays"]] for week in weeks]
 
 
-# The farmer, drawn once at the origin with his feet on y=0, so the only thing
-# the animations move is the group around him. Kept at module scope because a
-# 30px stick figure either reads as a person or does not, and that is far
-# easier to judge on its own than inside 370 popping squares.
-WALKER = (
-    # Head, then a torso pitched forward — upright he reads as strolling.
-    '<circle class="skin" cx="1.5" cy="-27" r="4.4"/>'
-    '<path class="ink" d="M1,-22.5 C0,-18 -1,-14 -2,-10.5"/>'
-    # Both arms reach down and forward to the handles.
-    '<path class="ink" d="M0,-19 L10,-14"/>'
-    '<path class="ink" d="M-0.5,-16 L10,-11"/>'
-    # Legs swing from the hip; the back one is half a stride behind.
-    '<path class="leg" d="M-2,-10.5 L-6,0"/>'
-    '<path class="leg back" d="M-2,-10.5 L2.5,0"/>'
-    # The plough, drawn big enough to read at this size: two handles running
-    # back from his hands, a beam down into the soil, and a solid share.
-    '<path class="ink" d="M10,-14 L21,-2"/>'
-    '<path class="ink" d="M10,-11 L22,-4"/>'
-    '<path class="ink" d="M14,-9.5 L17.5,-7.5"/>'
-    '<path class="ink" d="M21,-2 L22,2"/>'
-    '<path class="skin" d="M18,1 L27,2.5 L20.5,6 Z"/>'
-)
-
-
 def pop_svg(weeks: list[list[int]]) -> str:
-    """The contribution year as a field, with someone ploughing across it.
+    """The contribution year as a field, with a cannon shelling it.
 
-    A figure walks the width of the grid; each square pops as he reaches its
-    column, so the pops have a cause rather than firing at random. Contribution
-    days burst — bigger scale, a brightness flash, a squash on the way back —
-    while empty ground just gets turned over.
+    A gun turret stands in the middle of the grid, swings to each contribution
+    day in turn and fires; the shell flies out and the square bursts when it
+    lands. Days with no commits are never hit and never move — the cannon is
+    the only thing that makes anything happen, which is the point.
 
-    Everything is CSS keyframes and per-square animation-delay: GitHub serves
+    Everything is CSS keyframes and per-element animation-delay. GitHub serves
     this through an <img>, where scripts never run but stylesheets inside the
-    SVG do. The delay for a square is whatever makes its pop land at the moment
-    the walker's own animation has him standing over that column.
+    SVG do, so each shell needs its own @keyframes: the flight path is a
+    different vector every time.
     """
     cell, gap = 11, 3
     pitch = cell + gap
     columns = len(weeks)
     width = columns * pitch + gap
-    # He walks on the field rather than in a margin above it, and at 1.9x the
-    # drawn size, because at 31px tall the plough was an unreadable smudge.
-    # Scaled, he stands about four rows deep with his feet on the bottom one.
-    scale = 1.9
-    # The share digs below his feet, so the canvas needs a strip under the last
-    # row for it. Without this his bounding box ran to y=109 in a 101-tall
-    # picture and the blade — the whole point of him — was clipped away.
-    furrow = 13
-    height = 7 * pitch + gap + furrow
+    height = 7 * pitch + gap
 
     # Light and dark are both painted here: an <img> gets no page CSS, so the
     # only way to answer the reader's theme is prefers-color-scheme inside.
@@ -214,118 +183,138 @@ def pop_svg(weeks: list[list[int]]) -> str:
     squares = [
         (x, y, count) for x, week in enumerate(weeks) for y, count in enumerate(week)
     ]
-    peak = max((count for _, _, count in squares if count), default=1)
+    targets = [(x, y, count) for x, y, count in squares if count]
+    peak = max((count for _, _, count in targets), default=1)
 
     def level(count: int) -> int:
         if count == 0:
             return 0
         return min(4, 1 + int(count / peak * 3.999))
 
-    # One crossing per cycle, at a walking pace rather than a sweep. He starts
-    # and ends off-canvas so he enters and leaves rather than materialising.
-    cycle = 12.0
-    # Align the PEAK of the pop, at 96.8%, rather than its first frame at 95%.
-    # Aligning the start left every square swelling a beat after he had gone
-    # by: the pop lasts 5% of the cycle, which is two and a half columns of
-    # walking, so the disturbance visibly trailed him.
+    def centre(x: int, y: int) -> tuple[float, float]:
+        return gap + x * pitch + cell / 2, gap + y * pitch + cell / 2
+
+    # The turret sits on the grid, not beside it, and small — roughly two cells
+    # across, so it reads as a piece on the board rather than a mascot next to
+    # it. Mid-field so there are targets to either side of it.
+    gun_x, gun_y = width / 2, height / 2
+    barrel = 13.0
+
+    # About half a second between shots, however many days there are to shell.
+    shots = len(targets)
+    cycle = max(10.0, shots * 0.55)
+    # 0.26s to cross up to 370px was a blur; 0.34 still reads as a shell rather
+    # than a drifting dot, and keeps the flight well inside its 0.55s slot.
+    flight = 0.34
     pop_at = 0.968
-    # And it is the share that turns the soil, not the walker's feet — it is
-    # drawn out to his right, and the whole figure is scaled, so the column
-    # under it sits well ahead of his centre.
-    blade = 22 * scale
-    # The margin has to clear the share, not just the man: at 26px the blade
-    # was already standing over column 0 when the walk began, so the first
-    # columns popped before he had entered the picture.
-    margin = blade + 20
-    span = width + 2 * margin
 
-    def arrival(x: int) -> float:
-        """When the plough blade is over column x.
-
-        This inverts the *walk* keyframes, not the grid: he covers
-        width + 2*margin, so pacing him by column alone left him running two
-        columns ahead of the squares he was supposed to be popping.
-        """
-        centre = gap + x * pitch + cell / 2
-        return (centre - blade + margin) / span * cycle
-
-    def delay(x: int) -> float:
-        return (arrival(x) - pop_at * cycle) % cycle
+    # Fire in a scattered order rather than left to right, so the turret swings
+    # about the whole field instead of tracking steadily across it. md5 keeps
+    # it identical on every rebuild — random.shuffle or hash() would rewrite
+    # pop.svg daily and commit a diff on days nothing happened, and hash() is
+    # salted per process besides.
+    order = sorted(targets, key=lambda t: hashlib.md5(f"{t[0]},{t[1]}".encode()).digest())
 
     rules = [
         ".c{stroke-width:0;rx:2;transform-box:fill-box;transform-origin:center}",
-        # Ground that is merely walked over gets turned, not popped.
-        "@keyframes till{"
-        "0%,95%{transform:scale(1)}"
-        "97.2%{transform:scale(.82) rotate(8deg)}"
-        "100%{transform:scale(1)}"
-        "}",
-        # A contribution day bursts: the overshoot and the squash under itself
-        # are what make it read as a pop rather than a pulse.
+        # Only a square that gets hit moves, and it moves when the shell lands.
         "@keyframes popg{"
         "0%,95%{transform:scale(1);filter:none}"
-        "96.8%{transform:scale(1.6);filter:brightness(1.6)}"
+        "96.8%{transform:scale(1.6);filter:brightness(1.7)}"
         "98.4%{transform:scale(.82);filter:none}"
         "100%{transform:scale(1)}"
         "}",
-        f"@keyframes walk{{"
-        f"0%{{transform:translateX({-margin}px)}}"
-        f"100%{{transform:translateX({width + margin}px)}}"
-        f"}}",
-        # A separate bob on an inner group, on its own short loop, so the gait
-        # does not have to divide into the crossing time.
-        "@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-2.5px)}}",
-        "@keyframes stride{0%,100%{transform:rotate(-16deg)}50%{transform:rotate(16deg)}}",
-        ".walker{animation:walk %.1fs linear infinite}" % cycle,
-        ".bob{animation:bob .5s ease-in-out infinite}",
-        # The legs carry their own stroke rather than borrowing .ink: they swing
-        # from the hip, so they need transform-origin of their own anyway.
-        ".ink,.leg{stroke:#57606a;fill:none;stroke-width:2.2;"
-        "stroke-linecap:round;stroke-linejoin:round}",
-        ".leg{transform-box:fill-box;transform-origin:top center;"
-        "animation:stride .5s ease-in-out infinite}",
-        ".leg.back{animation-delay:-.25s}",
-        ".skin{fill:#57606a}",
-        # A reader who asked their system not to animate gets the finished
-        # field and a walker standing still in it, not a half-popped frame.
+        ".gun{fill:#57606a}",
+        ".shell{fill:#57606a}",
         "@media (prefers-reduced-motion:reduce){"
-        ".c,.walker,.bob,.leg{animation:none!important}}",
+        ".c,.turret,.shell{animation:none!important}.shell{opacity:0}}",
     ]
     for shade, light in enumerate(levels_light):
         rules.append(f".l{shade}{{fill:{light}}}")
     rules.append("@media (prefers-color-scheme:dark){")
     for shade, dark in enumerate(levels_dark):
         rules.append(f".l{shade}{{fill:{dark}}}")
-    rules.append(".ink,.leg{stroke:#adbac7}.skin{fill:#adbac7}")
+    rules.append(".gun,.shell{fill:#adbac7}")
     rules.append("}")
+
+    # One firing slot per target, offset half a slot so no keyframe sits at 0%.
+    slot = cycle / max(shots, 1)
+    fire_at = {t: (i + 0.5) * slot for i, t in enumerate(order)}
+
+    # The barrel holds each bearing through its own shot, then swings to the
+    # next. Interpolating between the held angles is what makes it track.
+    aim_stops = []
+    for index, target in enumerate(order):
+        tx, ty = centre(target[0], target[1])
+        angle = math.degrees(math.atan2(ty - gun_y, tx - gun_x))
+        at = fire_at[target]
+        aim_stops.append((max((at - slot * 0.35) / cycle * 100, 0.0), angle))
+        aim_stops.append(((at + flight) / cycle * 100, angle))
+    rules.append(
+        "@keyframes aim{"
+        + "".join(
+            f"{stop:.3f}%{{transform:rotate({angle:.2f}deg)}}"
+            for stop, angle in sorted(aim_stops)
+        )
+        + "}"
+    )
+    rules.append(
+        ".turret{transform-box:fill-box;transform-origin:center;"
+        f"animation:aim {cycle:.2f}s linear infinite}}"
+    )
+
+    shells = []
+    for index, target in enumerate(order):
+        tx, ty = centre(target[0], target[1])
+        at = fire_at[target]
+        launch = at / cycle * 100
+        land = (at + flight) / cycle * 100
+        rules.append(
+            f"@keyframes f{index}{{"
+            f"0%,{max(launch - 0.01, 0):.3f}%{{transform:translate(0,0);opacity:0}}"
+            f"{launch:.3f}%{{transform:translate(0,0);opacity:1}}"
+            f"{land:.3f}%{{transform:translate({tx - gun_x:.1f}px,{ty - gun_y:.1f}px);opacity:1}}"
+            f"{min(land + 0.01, 100):.3f}%,100%{{"
+            f"transform:translate({tx - gun_x:.1f}px,{ty - gun_y:.1f}px);opacity:0}}"
+            f"}}"
+        )
+        shells.append(
+            f'<circle class="shell" cx="{gun_x:.1f}" cy="{gun_y:.1f}" r="2.8" '
+            f'style="animation:f{index} {cycle:.2f}s linear infinite"/>'
+        )
 
     parts = []
     for x, y, count in squares:
-        name = "popg" if count else "till"
+        style = ""
+        if count:
+            # Wind the delay back so the pop's peak lands with the shell.
+            impact = fire_at[(x, y, count)] + flight
+            delay = (impact - pop_at * cycle) % cycle
+            style = f' style="animation:popg {cycle:.2f}s {delay:.3f}s infinite"'
         parts.append(
             f'<rect class="c l{level(count)}" x="{gap + x * pitch}" '
-            f'y="{gap + y * pitch}" width="{cell}" height="{cell}" '
-            f'style="animation:{name} {cycle:.1f}s {delay(x):.3f}s infinite"/>'
+            f'y="{gap + y * pitch}" width="{cell}" height="{cell}"{style}/>'
         )
 
-    # Three nested groups, and the middle one has to exist: a CSS animation on
-    # transform overrides the SVG transform attribute on the same element, so
-    # putting the vertical placement on .bob had the bob animation discard it
-    # and draw him above the canvas, clipped out of the picture entirely.
-    walker = (
-        '<g class="walker">'
-        f'<g transform="translate(0,{height - furrow - 3}) scale({scale})">'
-        f'<g class="bob">{WALKER}</g>'
-        "</g></g>"
+    # The gun: a barrel that swings, on a fixed mount. The rotating group has
+    # no transform attribute of its own — a CSS animation on transform beats
+    # the SVG attribute, so anything static there would simply be discarded.
+    gun = (
+        f'<g transform="translate({gun_x:.1f},{gun_y:.1f})">'
+        f'<g class="turret">'
+        f'<rect class="gun" x="0" y="-2.3" width="{barrel}" height="4.6" rx="1.6"/>'
+        f"</g>"
+        f'<circle class="gun" cx="0" cy="0" r="5"/>'
+        f'<rect class="gun" x="-5.5" y="4" width="11" height="2.6" rx="1.3"/>'
+        f"</g>"
     )
 
-    green = sum(1 for _, _, count in squares if count)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}" role="img" '
-        f'aria-label="A year of contributions as a field, {green} of them days '
-        f'with commits, popping as someone ploughs across it">'
-        f"<style>{''.join(rules)}</style>{''.join(parts)}{walker}</svg>\n"
+        f'aria-label="A year of contributions as a field, with a cannon firing '
+        f'on each of the {shots} days with commits in turn">'
+        f"<style>{''.join(rules)}</style>{''.join(parts)}{''.join(shells)}{gun}</svg>\n"
     )
 
 

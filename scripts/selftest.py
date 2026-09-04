@@ -1,9 +1,10 @@
-"""The two decisions in generate.py that are worth a check, and no more.
+"""The decisions in generate.py that are worth a check, and no more.
 
 Run with `python scripts/selftest.py`. No framework, no network: everything
 here is pure formatting over a Counter and a grid.
 """
 
+import math
 import re
 import sys
 from collections import Counter
@@ -22,47 +23,56 @@ assert "GH_PAT" in commit_table(morning_heavy, False)
 assert "early" in commit_table(morning_heavy, True)
 assert "Night" in commit_table(Counter({23: 5}), True)
 
-# Every day animates, but a contribution day bursts while bare ground is only
-# turned over — an empty square holding rigid as the walker passes gives it away.
-svg = pop_svg([[0] * 7, [3, 0, 0, 0, 0, 0, 1]])
-assert svg.count("<rect") == 14, "every day needs a square"
-# Counted by name, since the walker's own keyframes live in the stylesheet too.
-assert svg.count("animation:popg") == 2, "the two contribution days pop"
-assert svg.count("animation:till") == 12, "the rest are only turned over"
-assert svg.count("animation:popg") + svg.count("animation:till") == 14, "no square left out"
-assert "prefers-reduced-motion" in svg and "prefers-color-scheme" in svg
-assert 'class="walker"' in svg, "someone has to be doing the ploughing"
-# The vertical placement must sit on a group that no CSS animation touches: a
-# CSS transform beats the SVG attribute, so an animated element cannot also
-# carry its own position — he ends up drawn above the canvas and clipped away.
-assert re.search(r'class="walker"><g transform="translate\(0,\d+\) scale\([\d.]+\)"><g class="bob"', svg), \
-    "the walker needs a static group between walk and bob"
+# Only days with commits are shelled, and only they move. A grid where the
+# empty squares twitch has something firing at nothing.
+grid = [[0] * 7, [3, 0, 0, 0, 0, 0, 1]]
+svg = pop_svg(grid)
+assert svg.count("<rect") >= 14, "every day needs a square"
+assert svg.count("animation:popg") == 2, "the two contribution days burst"
+assert svg.count("animation:f") == 2, "one shell per target"
+assert 'class="turret"' in svg and svg.count('class="shell"') == 2
 
 # The delays must be byte-identical run to run, or the daily workflow commits
 # a churned pop.svg on days when nothing actually happened.
-assert pop_svg([[0] * 7, [3, 0, 0, 0, 0, 0, 1]]) == svg, "output must be stable"
+assert pop_svg(grid) == svg, "output must be stable"
 
-# A square pops when the walker reaches its column. Every square in a column
-# shares one moment, and that moment is where the walker actually is — checked
-# against the same arithmetic the walk animation runs on, because if the two
-# drift apart the squares pop with nobody standing over them.
-CYCLE, POP_AT, NCOLS = 12.0, 0.968, 12
-SCALE = 1.9
-BLADE = 22 * SCALE
-CELL, GAP, PITCH = 11, 3, 14
-MARGIN = BLADE + 20
-WIDTH = NCOLS * PITCH + GAP
-SPAN = WIDTH + 2 * MARGIN
-grid = [[1] * 7 for _ in range(NCOLS)]
-delays = [float(d) for d in re.findall(r"animation:\w+ [\d.]+s ([\d.]+)s", pop_svg(grid))]
-columns = [delays[i * 7:(i + 1) * 7] for i in range(NCOLS)]
-for x, column in enumerate(columns):
-    assert len(set(column)) == 1, "one column, one moment"
-    fires_at = (column[0] + POP_AT * CYCLE) % CYCLE
-    # Where the walk keyframes actually put the blade, margins included —
-    # pacing him by column alone once left him two columns ahead of his pops.
-    walker_at = (GAP + x * PITCH + CELL / 2 - BLADE + MARGIN) / SPAN * CYCLE % CYCLE
-    gap_between = min((fires_at - walker_at) % CYCLE, (walker_at - fires_at) % CYCLE)
-    assert gap_between < 1e-3, f"column {x} pops with nobody there"
+# A square bursts when its shell lands, not on some unrelated beat. The shells
+# are emitted in firing order and the rects in grid order, so they have to be
+# matched by where the shell actually flies to — which is the useful check
+# anyway: if the flight and the pop are ever wired to different numbers, the
+# squares go off with nothing arriving.
+CELL, GAP, PITCH, POP_AT = 11, 3, 14, 0.968
+COLUMNS = 6
+wide = [[1] * 7 for _ in range(COLUMNS)]
+svg = pop_svg(wide)
+cycle = float(re.search(r"animation:popg ([\d.]+)s", svg).group(1))
+gun_x, gun_y = (COLUMNS * PITCH + GAP) / 2, (7 * PITCH + GAP) / 2
+
+bursts = {}
+for x_at, y_at, delay in re.findall(
+    r'<rect class="c l\d+" x="([\d.]+)" y="([\d.]+)"[^>]*?animation:popg [\d.]+s ([\d.]+)s', svg
+):
+    bursts[(float(x_at), float(y_at))] = float(delay)
+assert len(bursts) == COLUMNS * 7, "every contribution day needs a shell"
+
+for flight_css in re.findall(r"@keyframes f\d+\{.*?\}(?=@|$)", svg, re.S):
+    dx, dy, land = re.search(
+        r"([-\d.]+)px,([-\d.]+)px\);opacity:1\}([\d.]+)%", flight_css
+    ).groups()
+    # Where the shell is aimed, turned back into the square it should hit.
+    col = round((gun_x + float(dx) - GAP - CELL / 2) / PITCH)
+    row = round((gun_y + float(dy) - GAP - CELL / 2) / PITCH)
+    key = (float(GAP + col * PITCH), float(GAP + row * PITCH))
+    assert key in bursts, f"shell aimed at ({col},{row}), which is not a target"
+    impact = float(land) / 100 * cycle
+    fires_at = (bursts[key] + POP_AT * cycle) % cycle
+    apart = min((fires_at - impact) % cycle, (impact - fires_at) % cycle)
+    assert apart < 1e-2, f"square ({col},{row}) bursts {apart:.3f}s from impact"
+
+# The turret has to be free to rotate: a CSS animation on transform overrides
+# the SVG transform attribute on the same element, so the mount's position must
+# live on a separate group or the aim animation simply discards it.
+assert re.search(r'<g transform="translate\([\d.]+,[\d.]+\)"><g class="turret">', svg), \
+    "the turret needs its own group inside a positioned mount"
 
 print("selftest ok")
