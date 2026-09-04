@@ -64,8 +64,6 @@
 
 <br>
 
-## // Now Playing
-
 <p align="center">
   <a href="https://spotify-github-profile.kittinanx.com/api/view?uid=tndmoz479i6rz7bjaeqwv419g&redirect=true">
     <img src="https://spotify-github-profile.kittinanx.com/api/view?uid=tndmoz479i6rz7bjaeqwv419g&cover_image=false&theme=default&show_offline=true&background_color=121212&interchange=true&profanity=false&hide_remaster=true" alt="What I'm listening to on Spotify" />
