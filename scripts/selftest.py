@@ -35,7 +35,7 @@ assert 'class="walker"' in svg, "someone has to be doing the ploughing"
 # The vertical placement must sit on a group that no CSS animation touches: a
 # CSS transform beats the SVG attribute, so an animated element cannot also
 # carry its own position — he ends up drawn above the canvas and clipped away.
-assert re.search(r'class="walker"><g transform="translate\(0,\d+\)"><g class="bob"', svg), \
+assert re.search(r'class="walker"><g transform="translate\(0,\d+\) scale\([\d.]+\)"><g class="bob"', svg), \
     "the walker needs a static group between walk and bob"
 
 # The delays must be byte-identical run to run, or the daily workflow commits
@@ -47,8 +47,10 @@ assert pop_svg([[0] * 7, [3, 0, 0, 0, 0, 0, 1]]) == svg, "output must be stable"
 # against the same arithmetic the walk animation runs on, because if the two
 # drift apart the squares pop with nobody standing over them.
 CYCLE, POP_AT, NCOLS = 12.0, 0.968, 12
-BLADE = 19
-CELL, GAP, PITCH, MARGIN = 11, 3, 14, 26
+SCALE = 1.9
+BLADE = 22 * SCALE
+CELL, GAP, PITCH = 11, 3, 14
+MARGIN = BLADE + 20
 WIDTH = NCOLS * PITCH + GAP
 SPAN = WIDTH + 2 * MARGIN
 grid = [[1] * 7 for _ in range(NCOLS)]
@@ -59,7 +61,8 @@ for x, column in enumerate(columns):
     fires_at = (column[0] + POP_AT * CYCLE) % CYCLE
     # Where the walk keyframes actually put the blade, margins included —
     # pacing him by column alone once left him two columns ahead of his pops.
-    walker_at = (GAP + x * PITCH + CELL / 2 - BLADE + MARGIN) / SPAN * CYCLE
-    assert abs(fires_at - walker_at) < 1e-3, f"column {x} pops with nobody there"
+    walker_at = (GAP + x * PITCH + CELL / 2 - BLADE + MARGIN) / SPAN * CYCLE % CYCLE
+    gap_between = min((fires_at - walker_at) % CYCLE, (walker_at - fires_at) % CYCLE)
+    assert gap_between < 1e-3, f"column {x} pops with nobody there"
 
 print("selftest ok")

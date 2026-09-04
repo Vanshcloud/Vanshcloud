@@ -164,16 +164,18 @@ WALKER = (
     '<circle class="skin" cx="1.5" cy="-27" r="4.4"/>'
     '<path class="ink" d="M1,-22.5 C0,-18 -1,-14 -2,-10.5"/>'
     # Both arms reach down and forward to the handles.
-    '<path class="ink" d="M0,-19 L9.5,-13.5"/>'
-    '<path class="ink" d="M-0.5,-16 L9.5,-11"/>'
+    '<path class="ink" d="M0,-19 L10,-14"/>'
+    '<path class="ink" d="M-0.5,-16 L10,-11"/>'
     # Legs swing from the hip; the back one is half a stride behind.
     '<path class="leg" d="M-2,-10.5 L-6,0"/>'
     '<path class="leg back" d="M-2,-10.5 L2.5,0"/>'
-    # The plough: two handles running back to a beam, and a blade in the soil.
-    '<path class="ink" d="M9.5,-13.5 L20,2"/>'
-    '<path class="ink" d="M9.5,-11 L21,-0.5"/>'
-    '<path class="ink" d="M13.5,-7.5 L15,-9.5"/>'
-    '<path class="skin" d="M18.5,0 l6,1.5 -5.5,3.5 z"/>'
+    # The plough, drawn big enough to read at this size: two handles running
+    # back from his hands, a beam down into the soil, and a solid share.
+    '<path class="ink" d="M10,-14 L21,-2"/>'
+    '<path class="ink" d="M10,-11 L22,-4"/>'
+    '<path class="ink" d="M14,-9.5 L17.5,-7.5"/>'
+    '<path class="ink" d="M21,-2 L22,2"/>'
+    '<path class="skin" d="M18,1 L27,2.5 L20.5,6 Z"/>'
 )
 
 
@@ -193,9 +195,16 @@ def pop_svg(weeks: list[list[int]]) -> str:
     cell, gap = 11, 3
     pitch = cell + gap
     columns = len(weeks)
-    lane = 36  # headroom above the grid: the figure is 31.4 tall, plus the bob
     width = columns * pitch + gap
-    height = 7 * pitch + gap + lane
+    # He walks on the field rather than in a margin above it, and at 1.9x the
+    # drawn size, because at 31px tall the plough was an unreadable smudge.
+    # Scaled, he stands about four rows deep with his feet on the bottom one.
+    scale = 1.9
+    # The share digs below his feet, so the canvas needs a strip under the last
+    # row for it. Without this his bounding box ran to y=109 in a 101-tall
+    # picture and the blade — the whole point of him — was clipped away.
+    furrow = 13
+    height = 7 * pitch + gap + furrow
 
     # Light and dark are both painted here: an <img> gets no page CSS, so the
     # only way to answer the reader's theme is prefers-color-scheme inside.
@@ -215,16 +224,20 @@ def pop_svg(weeks: list[list[int]]) -> str:
     # One crossing per cycle, at a walking pace rather than a sweep. He starts
     # and ends off-canvas so he enters and leaves rather than materialising.
     cycle = 12.0
-    margin = 26
-    span = width + 2 * margin
     # Align the PEAK of the pop, at 96.8%, rather than its first frame at 95%.
     # Aligning the start left every square swelling a beat after he had gone
     # by: the pop lasts 5% of the cycle, which is two and a half columns of
     # walking, so the disturbance visibly trailed him.
     pop_at = 0.968
-    # And it is the blade that turns the soil, not the walker's feet — it is
-    # drawn out to his right, so the column under it is ahead of his centre.
-    blade = 19
+    # And it is the share that turns the soil, not the walker's feet — it is
+    # drawn out to his right, and the whole figure is scaled, so the column
+    # under it sits well ahead of his centre.
+    blade = 22 * scale
+    # The margin has to clear the share, not just the man: at 26px the blade
+    # was already standing over column 0 when the walk began, so the first
+    # columns popped before he had entered the picture.
+    margin = blade + 20
+    span = width + 2 * margin
 
     def arrival(x: int) -> float:
         """When the plough blade is over column x.
@@ -251,7 +264,7 @@ def pop_svg(weeks: list[list[int]]) -> str:
         # are what make it read as a pop rather than a pulse.
         "@keyframes popg{"
         "0%,95%{transform:scale(1);filter:none}"
-        "96.8%{transform:scale(1.95);filter:brightness(1.6)}"
+        "96.8%{transform:scale(1.6);filter:brightness(1.6)}"
         "98.4%{transform:scale(.82);filter:none}"
         "100%{transform:scale(1)}"
         "}",
@@ -291,7 +304,7 @@ def pop_svg(weeks: list[list[int]]) -> str:
         name = "popg" if count else "till"
         parts.append(
             f'<rect class="c l{level(count)}" x="{gap + x * pitch}" '
-            f'y="{lane + gap + y * pitch}" width="{cell}" height="{cell}" '
+            f'y="{gap + y * pitch}" width="{cell}" height="{cell}" '
             f'style="animation:{name} {cycle:.1f}s {delay(x):.3f}s infinite"/>'
         )
 
@@ -301,7 +314,7 @@ def pop_svg(weeks: list[list[int]]) -> str:
     # and draw him above the canvas, clipped out of the picture entirely.
     walker = (
         '<g class="walker">'
-        f'<g transform="translate(0,{lane})">'
+        f'<g transform="translate(0,{height - furrow - 3}) scale({scale})">'
         f'<g class="bob">{WALKER}</g>'
         "</g></g>"
     )
