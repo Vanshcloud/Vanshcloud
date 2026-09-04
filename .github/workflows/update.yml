@@ -1,0 +1,47 @@
+name: Refresh profile
+
+# 03:00 UTC is 08:30 IST — after the night commits have landed, so the table
+# describes yesterday in full rather than splitting it across two runs.
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+  push:
+    paths:
+      - scripts/generate.py
+      - .github/workflows/update.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Self-check
+        run: python scripts/selftest.py
+
+      - name: Regenerate the commit table and pop.svg
+        env:
+          # GH_PAT (a classic token with `repo`) counts private commits too.
+          # Without it the run still succeeds on the public repositories only.
+          GH_TOKEN: ${{ secrets.GH_PAT || secrets.GITHUB_TOKEN }}
+        run: python scripts/generate.py
+
+      - name: Commit only if something moved
+        run: |
+          if git diff --quiet; then
+            echo "nothing changed"
+            exit 0
+          fi
+          git config user.name "Vanshcloud"
+          git config user.email "vanshwar@gmail.com"
+          git add README.md pop.svg
+          git commit -m "chore: refresh commit times and pop.svg"
+          git push
