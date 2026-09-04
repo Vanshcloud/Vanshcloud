@@ -79,6 +79,26 @@ for flight_css in re.findall(r"@keyframes f\d+\{.*?\}(?=@|$)", svg, re.S):
     apart = min((fires_at - impact) % cycle, (impact - fires_at) % cycle)
     assert apart < 1e-2, f"square ({col},{row}) bursts {apart:.3f}s from impact"
 
+# The barrel pivots at the breech, not at its own waist. transform-origin
+# defaults to the centre of the box, which for a barrel drawn from the mount
+# outwards is halfway along it — the muzzle then sweeps back through the wheel.
+assert "transform-origin:left center" in svg, "the barrel must pivot at the breech"
+
+# Consecutive bearings must never be more than half a turn apart. atan2 returns
+# (-180, 180], so a target just below the axis followed by one just above reads
+# as 350 degrees of travel and the barrel takes the long way round — a full
+# spin to move a few degrees.
+aim = re.search(r"@keyframes aim\{(.*?)\}(?=@|\.)", svg, re.S).group(1)
+bearings = [float(a) for a in re.findall(r"rotate\((-?[\d.]+)deg\)", aim)]
+steps = [abs(b - a) for a, b in zip(bearings, bearings[1:])]
+assert steps and max(steps) <= 180.0001, f"barrel swings {max(steps):.0f} degrees the long way"
+
+# Each target holds one bearing across two stops, so the sequence must come in
+# equal pairs. If a hold starts before the previous shell lands the sorted
+# keyframes interleave two targets and the barrel jumps between them.
+assert all(bearings[i] == bearings[i + 1] for i in range(0, len(bearings) - 1, 2)), \
+    "aim stops interleaved: a hold began before the previous shot landed"
+
 # The turret has to be free to rotate: a CSS animation on transform overrides
 # the SVG transform attribute on the same element, so the mount's position must
 # live on a separate group or the aim animation simply discards it.

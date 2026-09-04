@@ -257,12 +257,28 @@ def pop_svg(weeks: list[list[int]]) -> str:
 
     # The barrel holds each bearing through its own shot, then swings to the
     # next. Interpolating between the held angles is what makes it track.
+    # How long before firing the barrel is already on the bearing. It has to
+    # leave room for the shell still in the air from the previous shot: at
+    # slot*0.35 with a 0.5s flight in a 0.7s slot, the next target's hold began
+    # before the last one landed, the sorted keyframes interleaved two targets,
+    # and the barrel jumped 297 degrees between neighbouring stops.
+    settle = max(0.0, min(slot * 0.35, (slot - flight) * 0.8))
+
     aim_stops = []
+    swung = 0.0
     for index, target in enumerate(order):
         tx, ty = centre(target[0], target[1])
         angle = math.degrees(math.atan2(ty - gun_y, tx - gun_x))
+        # atan2 returns (-180, 180], so a target just below the axis and the
+        # next one just above are 350 degrees apart on paper and the barrel
+        # takes the long way round — a full spin to move a few degrees. Unwrap
+        # the sequence instead: keep adding turns until each step is the short
+        # one, and let the angle run past 180 as it accumulates.
+        if index:
+            angle += round((swung - angle) / 360) * 360
+        swung = angle
         at = fire_at[target]
-        aim_stops.append((max((at - slot * 0.35) / cycle * 100, 0.0), angle))
+        aim_stops.append((max((at - settle) / cycle * 100, 0.0), angle))
         aim_stops.append(((at + flight) / cycle * 100, angle))
     rules.append(
         "@keyframes aim{"
@@ -273,7 +289,10 @@ def pop_svg(weeks: list[list[int]]) -> str:
         + "}"
     )
     rules.append(
-        ".turret{transform-box:fill-box;transform-origin:center;"
+        # left center is the breech, where the barrel meets the wheel. The
+        # default centre is the middle of the barrel itself, so it pivoted
+        # about its own waist and the muzzle swept back through the mount.
+        ".turret{transform-box:fill-box;transform-origin:left center;"
         f"animation:aim {cycle:.2f}s linear infinite}}"
     )
 
