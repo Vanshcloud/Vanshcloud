@@ -27,10 +27,15 @@
 
 ## // Tech Stack
 
-<table align="center"><tr><td align="right"><b>Languages</b></td><td><img src="https://skillicons.dev/icons?i=python,java,javascript,typescript,cpp,postgresql" alt="Languages" /></td></tr><tr><td align="right"><b>Frontend</b></td><td><img src="https://skillicons.dev/icons?i=react,nextjs,tailwindcss,html,css" alt="Frontend" /></td></tr><tr><td align="right"><b>Backend &amp; Data</b></td><td><img src="https://skillicons.dev/icons?i=nodejs,expressjs,mongodb,fastapi" alt="Backend &amp; Data" /></td></tr><tr><td align="right"><b>ML &amp; AI</b></td><td><img src="https://skillicons.dev/icons?i=tensorflow,scikitlearn" alt="ML &amp; AI" /></td></tr><tr><td align="right"><b>Tools</b></td><td><img src="https://skillicons.dev/icons?i=git,docker" alt="Tools" /></td></tr></table>
+**Languages** &nbsp; ![Python](https://img.shields.io/badge/Python-3776AB?style=flat&logo=python&logoColor=white) ![Java](https://img.shields.io/badge/Java-ED8B00?style=flat&logo=openjdk&logoColor=white) ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=flat&logo=javascript&logoColor=black) ![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat&logo=typescript&logoColor=white) ![C++](https://img.shields.io/badge/C++-00599C?style=flat&logo=cplusplus&logoColor=white) ![SQL](https://img.shields.io/badge/SQL-4479A1?style=flat&logo=postgresql&logoColor=white)
 
-<p align="center"><sub>Also in regular use, and without an icon to their name:<br>
-<b>LightGBM</b> · <b>XGBoost</b> · <b>SHAP</b> · <b>DuckDB</b> · <b>LangChain</b> · <b>Pandas</b> · <b>pytest</b> · <b>Streamlit</b></sub></p>
+**Frontend** &nbsp; ![React](https://img.shields.io/badge/React-61DAFB?style=flat&logo=react&logoColor=black) ![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=nextdotjs&logoColor=white) ![Tailwind](https://img.shields.io/badge/Tailwind-06B6D4?style=flat&logo=tailwindcss&logoColor=white) ![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat&logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat&logo=css3&logoColor=white)
+
+**Backend & Data** &nbsp; ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat&logo=nodedotjs&logoColor=white) ![Express](https://img.shields.io/badge/Express-000000?style=flat&logo=express&logoColor=white) ![MongoDB](https://img.shields.io/badge/MongoDB-47A248?style=flat&logo=mongodb&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=flat&logo=fastapi&logoColor=white) ![DuckDB](https://img.shields.io/badge/DuckDB-FFF000?style=flat&logo=duckdb&logoColor=black)
+
+**ML / AI** &nbsp; ![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=flat&logo=scikitlearn&logoColor=white) ![LightGBM](https://img.shields.io/badge/LightGBM-02569B?style=flat&logo=lightning&logoColor=white) ![XGBoost](https://img.shields.io/badge/XGBoost-EC4E20?style=flat&logo=xgboost&logoColor=white) ![TensorFlow](https://img.shields.io/badge/TensorFlow-FF6F00?style=flat&logo=tensorflow&logoColor=white) ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=flat&logo=langchain&logoColor=white) ![Pandas](https://img.shields.io/badge/Pandas-150458?style=flat&logo=pandas&logoColor=white)
+
+**Tools** &nbsp; ![Git](https://img.shields.io/badge/Git-F05032?style=flat&logo=git&logoColor=white) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white) ![Pytest](https://img.shields.io/badge/pytest-0A9EDC?style=flat&logo=pytest&logoColor=white) ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)
 
 <br>
 
