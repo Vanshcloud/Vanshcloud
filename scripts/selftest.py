@@ -57,10 +57,13 @@ gun_x, gun_y = (COLUMNS * PITCH + GAP) / 2, (7 * PITCH + GAP) / 2
 
 bursts = {}
 for x_at, y_at, delay in re.findall(
-    r'<rect class="c l\d+" x="([\d.]+)" y="([\d.]+)"[^>]*?animation:popg [\d.]+s ([\d.]+)s', svg
+    r'<rect class="c l\d+" x="([\d.]+)" y="([\d.]+)"[^>]*?animation:popg [\d.]+s (-?[\d.]+)s', svg
 ):
     bursts[(float(x_at), float(y_at))] = float(delay)
 assert len(bursts) == COLUMNS * 7, "every contribution day needs a shell"
+# Every delay must be negative. A positive one leaves the square dormant until
+# it elapses, so the opening cycle plays with shells landing on dead squares.
+assert all(d < 0 for d in bursts.values()), "a positive delay means a dead first cycle"
 
 for flight_css in re.findall(r"@keyframes f\d+\{.*?\}(?=@|$)", svg, re.S):
     dx, dy, land = re.search(

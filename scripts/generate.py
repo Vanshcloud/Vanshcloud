@@ -212,14 +212,14 @@ def pop_svg(weeks: list[list[int]]) -> str:
     # across, so it reads as a piece on the board rather than a mascot next to
     # it. Mid-field so there are targets to either side of it.
     gun_x, gun_y = width / 2, height / 2
-    barrel = 13.0
+    barrel = 17.0
 
-    # About half a second between shots, however many days there are to shell.
+    # A shot every 0.7s, however many days there are to shell.
     shots = len(targets)
-    cycle = max(10.0, shots * 0.55)
-    # 0.26s to cross up to 370px was a blur; 0.34 still reads as a shell rather
-    # than a drifting dot, and keeps the flight well inside its 0.55s slot.
-    flight = 0.34
+    cycle = max(12.0, shots * 0.7)
+    # 0.26s to cross up to 370px was a blur. 0.5 lets the eye follow the shell
+    # out to where it lands, and still fits inside the 0.7s between shots.
+    flight = 0.5
     pop_at = 0.968
 
     # Fire in a scattered order rather than left to right, so the turret swings
@@ -293,7 +293,7 @@ def pop_svg(weeks: list[list[int]]) -> str:
             f"}}"
         )
         shells.append(
-            f'<circle class="shell" cx="{gun_x:.1f}" cy="{gun_y:.1f}" r="2.8" '
+            f'<circle class="shell" cx="{gun_x:.1f}" cy="{gun_y:.1f}" r="3.2" '
             f'style="animation:f{index} {cycle:.2f}s linear infinite"/>'
         )
 
@@ -301,9 +301,14 @@ def pop_svg(weeks: list[list[int]]) -> str:
     for x, y, count in squares:
         style = ""
         if count:
-            # Wind the delay back so the pop's peak lands with the shell.
+            # Wind the delay back so the pop's peak lands with the shell —
+            # and land in [-cycle, 0), never a positive delay. A positive one
+            # means the square has not started yet, so for the whole first
+            # cycle the shells arrived at squares that could not react: ten
+            # dead seconds before anything moved. A negative delay starts the
+            # animation already part-way through, so it is in step from t=0.
             impact = fire_at[(x, y, count)] + flight
-            delay = (impact - pop_at * cycle) % cycle
+            delay = (impact - pop_at * cycle) % cycle - cycle
             style = f' style="animation:popg {cycle:.2f}s {delay:.3f}s infinite"'
         parts.append(
             f'<rect class="c l{level(count)}" x="{gap + x * pitch}" '
@@ -316,10 +321,10 @@ def pop_svg(weeks: list[list[int]]) -> str:
     gun = (
         f'<g transform="translate({gun_x:.1f},{gun_y:.1f})">'
         f'<g class="turret">'
-        f'<rect class="gun" x="0" y="-2.3" width="{barrel}" height="4.6" rx="1.6"/>'
+        f'<rect class="gun" x="0" y="-3" width="{barrel}" height="6" rx="2"/>'
         f"</g>"
-        f'<circle class="gun" cx="0" cy="0" r="5"/>'
-        f'<rect class="gun" x="-5.5" y="4" width="11" height="2.6" rx="1.3"/>'
+        f'<circle class="gun" cx="0" cy="0" r="6.5"/>'
+        f'<rect class="gun" x="-7" y="5" width="14" height="3.2" rx="1.6"/>'
         f"</g>"
     )
 
