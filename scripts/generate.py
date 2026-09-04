@@ -13,6 +13,7 @@ which is a smaller number, not a wrong one.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -185,14 +186,21 @@ def pop_svg(weeks: list[list[int]]) -> str:
             return 0
         return min(4, 1 + int(count / peak * 3.999))
 
-    # The delay is what makes the wave. Sweeping ~370 squares needs a far
-    # tighter stagger than sweeping the 20 green ones did: five seconds for the
-    # crossing, and a pop lasting 5% of the cycle, puts roughly two dozen
-    # squares mid-bounce at once — a band about four columns wide, which reads
-    # as a wave rather than as the whole grid twitching in unison.
+    # Ordering the delay by position marched a hard vertical line across the
+    # grid — legible, but it reads as a scanner rather than as popping. Each
+    # square instead takes its turn at a scattered moment, which is what bubble
+    # wrap actually looks like going off.
+    #
+    # md5 of the coordinates rather than random.shuffle or hash(): the delays
+    # have to be identical on every rebuild, or the daily workflow rewrites
+    # pop.svg and commits a diff even on a day nothing happened. Python's own
+    # hash() is salted per process and would do exactly that.
     sweep = 5.0
-    step = sweep / max(len(squares), 1)
     cycle = sweep + 2.0
+
+    def turn(x: int, y: int) -> float:
+        digest = hashlib.md5(f"{x},{y}".encode()).digest()
+        return int.from_bytes(digest[:4], "big") / 0xFFFFFFFF * sweep
 
     rules = [
         ".c{stroke-width:0;rx:2;transform-box:fill-box;transform-origin:center}",
@@ -225,13 +233,12 @@ def pop_svg(weeks: list[list[int]]) -> str:
     rules.append("}")
 
     parts = []
-    # Chronological order, so the wave crosses left to right like the year.
-    for order, (x, y, count) in enumerate(squares):
+    for x, y, count in squares:
         name = "popg" if count else "pop"
         parts.append(
             f'<rect class="c l{level(count)}" x="{gap + x * pitch}" y="{gap + y * pitch}" '
             f'width="{cell}" height="{cell}" '
-            f'style="animation:{name} {cycle:.3f}s {order * step:.3f}s infinite"/>'
+            f'style="animation:{name} {cycle:.3f}s {turn(x, y):.3f}s infinite"/>'
         )
 
     green = sum(1 for _, _, count in squares if count)

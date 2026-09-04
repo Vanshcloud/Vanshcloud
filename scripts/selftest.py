@@ -4,6 +4,7 @@ Run with `python scripts/selftest.py`. No framework, no network: everything
 here is pure formatting over a Counter and a grid.
 """
 
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -30,5 +31,15 @@ assert svg.count("animation:") - svg.count("animation:none") == 14, "every squar
 assert svg.count("animation:popg") == 2, "the two contribution days pop harder"
 assert svg.count("animation:pop ") == 12, "the rest get the quiet bounce"
 assert "prefers-reduced-motion" in svg and "prefers-color-scheme" in svg
+
+# The delays must be byte-identical run to run, or the daily workflow commits
+# a churned pop.svg on days when nothing actually happened.
+assert pop_svg([[0] * 7, [3, 0, 0, 0, 0, 0, 1]]) == svg, "output must be stable"
+
+# ...and scattered rather than marching in position order, which is the whole
+# point of hashing the coordinates.
+grid = [[1] * 7 for _ in range(12)]
+delays = [float(d) for d in re.findall(r"animation:\w+ [\d.]+s ([\d.]+)s", pop_svg(grid))]
+assert delays != sorted(delays), "delays must not follow position order"
 
 print("selftest ok")
