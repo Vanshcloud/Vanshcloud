@@ -155,7 +155,12 @@ def calendar() -> list[list[int]]:
 
 
 def pop_svg(weeks: list[list[int]]) -> str:
-    """The contribution grid as bubble wrap: every filled cell pops in turn.
+    """The contribution grid as bubble wrap: every square pops in turn.
+
+    Every square, not only the green ones — an empty square that stays rigid
+    while the wave crosses it breaks the illusion that the whole sheet is
+    being popped. Contribution days pop harder, and overshoot on the way back,
+    so the wave still reads as tracking the year's activity.
 
     CSS animation rather than SMIL or script, because GitHub serves this
     through an <img> — scripts never run there, stylesheets inside the SVG do.
@@ -170,39 +175,43 @@ def pop_svg(weeks: list[list[int]]) -> str:
     levels_light = ["#ebedf0", "#9be9a8", "#40c463", "#30a14e", "#216e39"]
     levels_dark = ["#161b22", "#0e4429", "#006d32", "#26a641", "#39d353"]
 
-    filled = [
-        (x, y, count)
-        for x, week in enumerate(weeks)
-        for y, count in enumerate(week)
-        if count > 0
+    squares = [
+        (x, y, count) for x, week in enumerate(weeks) for y, count in enumerate(week)
     ]
-    peak = max((count for _, _, count in filled), default=1)
+    peak = max((count for _, _, count in squares if count), default=1)
 
     def level(count: int) -> int:
         if count == 0:
             return 0
         return min(4, 1 + int(count / peak * 3.999))
 
-    # Each cell's delay is what makes the wave; the keyframes themselves are
-    # shared, and start at the moment that cell's turn comes round. Popping
-    # every square in turn is unreadable on a busy year and glacial on a quiet
-    # one, so the stagger is whatever fits the whole sweep into four seconds,
-    # never slower than 150ms a square.
-    step = min(0.15, 4.0 / max(len(filled), 1))
-    sweep = len(filled) * step
+    # The delay is what makes the wave. Sweeping ~370 squares needs a far
+    # tighter stagger than sweeping the 20 green ones did: five seconds for the
+    # crossing, and a pop lasting 5% of the cycle, puts roughly two dozen
+    # squares mid-bounce at once — a band about four columns wide, which reads
+    # as a wave rather than as the whole grid twitching in unison.
+    sweep = 5.0
+    step = sweep / max(len(squares), 1)
     cycle = sweep + 2.0
 
     rules = [
         ".c{stroke-width:0;rx:2;transform-box:fill-box;transform-origin:center}",
-        # The pop sits at the END of each cell's cycle, not the start, so a
-        # cell spends 85% of its time on the board. Put it at the start and
-        # every square is missing four seconds out of five, which reads as an
-        # empty graph rather than a full one being popped.
+        # The bounce sits at the END of each square's cycle, not the start: a
+        # square is at rest for 95% of it, and the animation-delay decides when
+        # its turn comes round.
         "@keyframes pop{"
-        "0%,85%{transform:scale(1);opacity:1}"
-        "89%{transform:scale(1.75);opacity:.9}"
-        "94%,98%{transform:scale(0);opacity:0}"
-        "100%{transform:scale(1);opacity:1}"
+        "0%,95%{transform:scale(1)}"
+        "97.2%{transform:scale(1.28)}"
+        "100%{transform:scale(1)}"
+        "}",
+        # A contribution day goes bigger, flashes, and squashes under itself
+        # before settling — the overshoot is what makes it read as a pop
+        # rather than a pulse.
+        "@keyframes popg{"
+        "0%,95%{transform:scale(1);filter:none}"
+        "96.8%{transform:scale(1.95);filter:brightness(1.6)}"
+        "98.4%{transform:scale(.82);filter:none}"
+        "100%{transform:scale(1)}"
         "}",
         # A reader who asked their system not to animate gets the finished
         # grid instead of a still frame of a half-popped one.
@@ -216,28 +225,21 @@ def pop_svg(weeks: list[list[int]]) -> str:
     rules.append("}")
 
     parts = []
-    # Empty cells are the board and never animate.
-    for x, week in enumerate(weeks):
-        for y, count in enumerate(week):
-            if count:
-                continue
-            parts.append(
-                f'<rect class="c l0" x="{gap + x * pitch}" y="{gap + y * pitch}" '
-                f'width="{cell}" height="{cell}"/>'
-            )
-    # Filled cells pop in chronological order, so it reads left to right.
-    for order, (x, y, count) in enumerate(filled):
-        delay = order * step
+    # Chronological order, so the wave crosses left to right like the year.
+    for order, (x, y, count) in enumerate(squares):
+        name = "popg" if count else "pop"
         parts.append(
             f'<rect class="c l{level(count)}" x="{gap + x * pitch}" y="{gap + y * pitch}" '
             f'width="{cell}" height="{cell}" '
-            f'style="animation:pop {cycle:.3f}s {delay:.3f}s infinite"/>'
+            f'style="animation:{name} {cycle:.3f}s {order * step:.3f}s infinite"/>'
         )
 
+    green = sum(1 for _, _, count in squares if count)
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
         f'viewBox="0 0 {width} {height}" role="img" '
-        f'aria-label="{len(filled)} contribution days, popping one by one">'
+        f'aria-label="A year of contributions, {green} of them days with commits, '
+        f'popping one square at a time">'
         f"<style>{''.join(rules)}</style>{''.join(parts)}</svg>\n"
     )
 

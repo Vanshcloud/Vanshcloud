@@ -47,28 +47,16 @@
 
 <br>
 
-## // When I Commit
-
-Counted from every commit on this account, in IST. Regenerated daily — see
-[`scripts/generate.py`](scripts/generate.py).
-
 <!--START_SECTION:commit-times-->
 **I'm a Night 🦉**
 
 ```text
 1  🌞 Morning       1 commits   ░░░░░░░░░░░░░░░░░░░░░░░░░     0.6%
-2  🌆 Daytime      72 commits   ███████████░░░░░░░░░░░░░░    42.6%
-3  🌃 Evening      62 commits   █████████░░░░░░░░░░░░░░░░    36.7%
-4  🌙 Night        34 commits   █████░░░░░░░░░░░░░░░░░░░░    20.1%
+2  🌆 Daytime      73 commits   ███████████░░░░░░░░░░░░░░    42.9%
+3  🌃 Evening      62 commits   █████████░░░░░░░░░░░░░░░░    36.5%
+4  🌙 Night        34 commits   █████░░░░░░░░░░░░░░░░░░░░    20.0%
 ```
 <!--END_SECTION:commit-times-->
-
-<br>
-
-## // Pop the Contributions
-
-Every contribution day on the graph, popping one at a time. Also regenerated
-daily, from the same script.
 
 <p align="center">
   <img src="./pop.svg" alt="A year of contributions, popping one square at a time" />
