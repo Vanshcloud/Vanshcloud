@@ -43,6 +43,8 @@
 
 - ⚽ **[Transfer Value Predictor](https://github.com/Vanshcloud/Transfer-Value-Predictor)** — Market-value prediction for professional footballers with a SHAP explanation behind every number. Evaluated on held-out seasons, not a random split. · `LightGBM` `FastAPI` `Next.js`
 
+- 🎯 **[Match Outcome Predictor](https://github.com/Vanshcloud/Match-Outcome-Predictor)** — Calibrated home/draw/away probabilities learned from 303,517 matches across 39 competitions, scored on 62,036 walk-forward forecasts against the bookmaker's closing line. It does not beat the line, and says so. · `LightGBM` `FastAPI` `Streamlit`
+
 - 🏭 **[Predictive Maintenance + GenAI](https://github.com/Vanshcloud/Predictive-Maintenance-GenAI)** — Predicts equipment failure 24 hours ahead from sensor telemetry, then explains it in plain English. Dockerised, 246 tests, 86% coverage. · `TensorFlow LSTM` `LangChain` `Streamlit`
 
 <br>
