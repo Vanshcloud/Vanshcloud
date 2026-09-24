@@ -47,6 +47,8 @@
 
 - 🏭 **[Predictive Maintenance + GenAI](https://github.com/Vanshcloud/Predictive-Maintenance-GenAI)** — Predicts equipment failure 24 hours ahead from sensor telemetry, then explains it in plain English. Dockerised, 246 tests, 86% coverage. · `TensorFlow LSTM` `LangChain` `Streamlit`
 
+- 🛡️ **[Intrusion Detection System](https://github.com/Vanshcloud/Intrusion-Detection-System)** — A benchmark study of flow-based attack detection on CIC-IDS2017 under leakage-aware chronological evaluation, with SHAP behind the frozen model. The same setup gives 0.025% false positives on a random split and 0.580% on a chronological one — measuring that gap is the point. · `LightGBM` `SHAP` `Streamlit`
+
 <br>
 
 <!--START_SECTION:commit-times-->
