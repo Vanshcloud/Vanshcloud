@@ -11,7 +11,21 @@ from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from generate import commit_table, pop_svg  # noqa: E402
+from generate import GhError, commit_table, pop_svg, run  # noqa: E402
+
+# run() must RAISE on failure, never exit. An empty repository answers 409 and
+# is an expected failure the caller skips; when run() called sys.exit() instead,
+# that skip became unreachable and one empty repo failed the whole refresh for
+# sixteen days. `false` fails with no output, which also pins the empty-stderr
+# case rather than only the chatty one.
+try:
+    run(["false"], "a command that fails")
+except GhError as failure:
+    assert "a command that fails" in str(failure)
+except SystemExit:  # pragma: no cover - this is the regression
+    raise AssertionError("run() exited instead of raising; empty repos cannot be skipped")
+else:
+    raise AssertionError("run() swallowed a non-zero exit")
 
 # A run that could not see private repositories has to say so. Publishing the
 # smaller number bare is the failure this whole flag exists to prevent.

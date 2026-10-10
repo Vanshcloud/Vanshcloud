@@ -38,16 +38,27 @@ BUCKETS = (
 )
 
 
+class GhError(RuntimeError):
+    """A `gh` call that failed, carrying what GitHub actually objected to."""
+
+    def __init__(self, what: str, stderr: str) -> None:
+        super().__init__(f"{what} failed:\n{stderr}")
+        self.stderr = stderr
+
+
 def run(cmd: list[str], what: str) -> str:
     """A `gh` call whose failure says what GitHub actually objected to.
 
     subprocess's own CalledProcessError prints the command and the exit code
     and drops stderr on the floor, which turns "your token is missing a scope"
     into "exit status 1" — a message that costs an hour to act on.
+
+    It raises rather than exiting: an empty repository is an expected failure
+    the caller skips, and exiting here made that skip unreachable.
     """
     done = subprocess.run(cmd, capture_output=True, text=True)
     if done.returncode != 0:
-        sys.exit(f"{what} failed:\n{(done.stderr or done.stdout).strip()}")
+        raise GhError(what, (done.stderr or done.stdout).strip())
     return done.stdout
 
 
@@ -72,7 +83,7 @@ def commit_hours() -> tuple[Counter, bool]:
     # request is authenticated as that very user.
     try:
         repos = gh("user/repos?per_page=100&affiliation=owner", paginate=True)
-    except subprocess.CalledProcessError:
+    except GhError:
         repos = gh(f"users/{USER}/repos?per_page=100", paginate=True)
     # Which endpoint answered says nothing about what came back: a workflow's
     # default GITHUB_TOKEN calls /user/repos quite happily and is simply handed
@@ -84,14 +95,13 @@ def commit_hours() -> tuple[Counter, bool]:
     for full_name in sorted(names):
         try:
             commits = gh(f"repos/{full_name}/commits?per_page=100", paginate=True)
-        except subprocess.CalledProcessError as failure:
+        except GhError as failure:
             # An empty repository answers 409 and has nothing to count. Every
             # other failure — a rate limit above all — must not be swallowed:
             # skipping a repository silently publishes a smaller number that
             # looks exactly as authoritative as the real one.
-            if "409" in (failure.stderr or "") or "Git Repository is empty" in (
-                failure.stderr or ""
-            ):
+            if "409" in failure.stderr or "Git Repository is empty" in failure.stderr:
+                print(f"  skipping {full_name}: empty repository")
                 continue
             sys.exit(f"could not read commits for {full_name}: {failure.stderr}")
         for commit in commits:
@@ -386,4 +396,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except GhError as failure:
+        sys.exit(str(failure))
